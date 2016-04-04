@@ -90,7 +90,7 @@ namespace Encog.Neural.Pattern
             _c1 = 5;
             _d1 = 0.9d;
             _l = 3;
-            _vigilance = 0.9d;
+            _vigilance = 0.75d;
         }
 
         /// <summary>
