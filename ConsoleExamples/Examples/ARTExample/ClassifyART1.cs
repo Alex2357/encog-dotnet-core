@@ -21,6 +21,7 @@
 // http://www.heatonresearch.com/copyright
 //
 using System;
+using System.Collections;
 using ConsoleExamples.Examples;
 using Encog.ML.Data.Specific;
 using Encog.Neural.ART;
@@ -30,40 +31,106 @@ namespace Encog.Examples.ARTExample
 {
     public class ClassifyART1 : IExample
     {
-        public const int INPUT_NEURONS = 5;
+        public const int INPUT_NEURONS = 2048;//5;
         public const int OUTPUT_NEURONS = 10;
 
         public String[] PATTERN = {
-                                      "   O ",
-                                      "  O O",
-                                      "    O",
-                                      "  O O",
-                                      "    O",
-                                      "  O O",
-                                      "    O",
-                                      " OO O",
-                                      " OO  ",
-                                      " OO O",
-                                      " OO  ",
-                                      "OOO  ",
-                                      "OO   ",
-                                      "O    ",
-                                      "OO   ",
-                                      "OOO  ",
-                                      "OOOO ",
-                                      "OOOOO",
-                                      "O    ",
-                                      " O   ",
-                                      "  O  ",
-                                      "   O ",
-                                      "    O",
-                                      "  O O",
-                                      " OO O",
-                                      " OO  ",
-                                      "OOO  ",
-                                      "OO   ",
-                                      "OOOO ",
-                                      "OOOOO"
+            "http://dummydomain.com.au/our-range/tools",
+            "http://dummydomain.com.au/our-range/tools/power-tools",
+            "http://dummydomain.com.au/our-range/tools/hand-tools",
+            "http://dummydomain.com.au/product/73694",
+            "http://dummydomain.com.au/product/38245",
+            "http://dummydomain.com.au/product/28246",
+            "http://dummydomain.com.au/product/37246",
+            "http://dummydomain.com.au/product/18246",
+            "http://dummydomain.com.au/product/39251",
+            "http://dummydomain.com.au/product/39252",
+            "http://dummydomain.com.au/product/39253",
+            "http://dummydomain.com.au/product/39254",
+            "http://dummydomain.com.au/our-range/tools/power-tools/cordless-drills",
+            "http://dummydomain.com.au/our-range/tools/power-tools/power-saws",
+            "http://dummydomain.com.au/our-range/tools/hand-tools/tool-storage",
+            "http://dummydomain.com.au/our-range/tools/power-tools/power-cleaning",
+            "http://dummydomain.com.au/our-range/tools/power-tools/sanders",
+            "http://dummydomain.com.au/our-range/tools/power-tools/air-compressors",
+            "http://dummydomain.com.au/our-range/tools/power-tools/generators",
+            "http://dummydomain.com.au/our-range/tools/hand-tools/sockets-spanners-and-tool-kits",
+            "http://dummydomain.com.au/our-range/tools/power-tools/cordless-skins",
+            "http://dummydomain.com.au/product/38246",
+            "http://dummydomain.com.au/product/43246",
+            "http://dummydomain.com.au/product/38246",
+            "http://dummydomain.com.au/our-range/tools/power-tools/corded-drills",
+            "http://dummydomain.com.au/our-range/tools/hand-tools/measuring-tools",
+            "http://dummydomain.com.au/product/39255",
+            "http://dummydomain.com.au/our-range/tools/power-tools/cordless-accessories",
+            "http://dummydomain.com.au/product/39256",
+            "http://dummydomain.com.au/our-range/tools/hand-tools",
+            "http://dummydomain.com.au/our-range/tools/hand-tools/saws-knives-and-blades",
+            "http://dummydomain.com.au/our-range/tools/hand-tools/safety-equipment-and-workwear",
+            "http://dummydomain.com.au/our-range/tools/hand-tools/clamps-pliers-and-vices",
+                //                      "   O ",
+                //                      "  O O",
+                //                      "    O",
+                //                      "  O O",
+                //                      "    O",
+                //                      "  O O",
+                //                      "    O",
+                //                      " OO O",
+                //                      " OO  ",
+                //                      " OO O",
+                //                      " OO  ",
+                //                      "OOO  ",
+                //                      "OO   ",
+                //                      "O    ",
+                //                      "OO   ",
+                //                      "OOO  ",
+                //                      "OOOO ",
+                //                      "OOOOO",
+                //                      "O    ",
+                //                      " O   ",
+                //                      "  O  ",
+                //                      "   O ",
+                //                      "    O",
+                //                      "  O O",
+                //                      " OO O",
+                //                      " OO  ",
+                //                      "OOO  ",
+                //                      "OO   ",
+                //                      "OOOO ",
+                //                      "OOOOO"
+
+                //,
+                //                      "   O ",
+                //                      "  O O",
+                //                      "    O",
+                //                      "  O O",
+                //                      "    O",
+                //                      "  O O",
+                //                      "    O",
+                //                      " OO O",
+                //                      " OO  ",
+                //                      " OO O",
+                //                      " OO  ",
+                //                      "OOO  ",
+                //                      "OO   ",
+                //                      "O    ",
+                //                      "OO   ",
+                //                      "OOO  ",
+                //                      "OOOO ",
+                //                      "OOOOO",
+                //                      "O    ",
+                //                      " O   ",
+                //                      "  O  ",
+                //                      "   O ",
+                //                      "    O",
+                //                      "  O O",
+                //                      " OO O",
+                //                      " OO  ",
+                //                      "OOO  ",
+                //                      "OO   ",
+                //                      "OOOO ",
+                //                      "OOOOO"
+
                                   };
 
         private IExampleInterface app;
@@ -87,7 +154,7 @@ namespace Encog.Examples.ARTExample
         public void Execute(IExampleInterface app)
         {
             this.app = app;
-            SetupInput();
+            SetupInput2();
             var pattern = new ART1Pattern();
             pattern.InputNeurons = INPUT_NEURONS;
             pattern.OutputNeurons = OUTPUT_NEURONS;
@@ -124,5 +191,25 @@ namespace Encog.Examples.ARTExample
                 }
             }
         }
+
+        public void SetupInput2()
+        {
+            input = new bool[PATTERN.Length][];
+            for (int n = 0; n < PATTERN.Length; n++)
+            {
+                var bytes = GetBytes(PATTERN[n]);
+                var bitArray = new BitArray(bytes);
+                input[n] = new bool[INPUT_NEURONS];
+                bitArray.CopyTo(input[n], 0);
+            }
+        }
+
+        static byte[] GetBytes(string str)
+        {
+            byte[] bytes = new byte[str.Length * sizeof(char)];
+            System.Buffer.BlockCopy(str.ToCharArray(), 0, bytes, 0, bytes.Length);
+            return bytes;
+        }
+
     }
 }
