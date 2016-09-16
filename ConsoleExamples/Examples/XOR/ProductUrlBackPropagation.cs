@@ -224,23 +224,24 @@ namespace Encog.Examples.XOR
             network.AddLayer(new BasicLayer(null, true, 512));
             network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));
             
-            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));//Added one more layer to check if it would work better because without it it has few issues
-            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));
+            //network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));//Added one more layer to check if it would work better because without it it has few issues
+//            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));
             network.AddLayer(new BasicLayer(new ActivationSigmoid(), false, 1));
             network.Structure.FinalizeStructure();
             network.Reset();
 
-            var urlsInput = new double[URLS.Length][];
-            var urlsResult = new double[URLS.Length][];
-            int i = 0;
-            foreach (var url in URLS)
+            var length = URLS.Length;
+
+            var urlsInput = new double[length][];
+            var urlsResult = new double[length][];
+            for (int i=0; i<length;i++)
             {
+                var url = URLS[i];
                 urlsInput[i] = new double[512];
                 StringToDoubleArray(url, urlsInput[i]);
-                var productUrl = Regex.IsMatch(url, @".*_p\d+");
-                var d = !url.Contains("ReturnURL=") && productUrl ? 1.0 : 0;
+                var productUrl = IsProductUrl(url);
+                var d = productUrl ? 1.0 : 0;
                 urlsResult[i] = new[] {d};
-                i++;
             }
             // create training data
             IMLDataSet trainingSet = new BasicMLDataSet(urlsInput, urlsResult);
@@ -258,6 +259,8 @@ namespace Encog.Examples.XOR
                 epoch++;
             } while (train.Error > 0.0001);
 
+
+
             // test the neural network
             Console.WriteLine(@"Neural Network Results:");
             foreach (IMLDataPair pair in trainingSet)
@@ -269,10 +272,17 @@ namespace Encog.Examples.XOR
             }
 
             var res = network.Compute(new StringMLData("http://www.dummydomain2.com/login?ReturnURL=%2Faeg-18v-li-ion-cordless-hammer-drill-skin-only_p6210356"))[0];
-            res = network.Compute(new StringMLData("http://www.dummydomain2.com/18v-li-ion-cordless-hammer-drill-skin-only_p6210356"))[0];
-            res = network.Compute(new StringMLData("http://www.dummydomain2.com/bla-bla-18v-hjsdfj-dhg_p3473985"))[0];
-            res = network.Compute(new StringMLData("http://www.dummydomain2.com/bla_p1"))[0];
+            res = network.Compute(new StringMLData("http://www.dummydomain2.com/12v-li-pol-cordless-drill-skin-only_p6210356"))[0];
+            res = network.Compute(new StringMLData("http://www.dummydomain2.com/bla-bla-18v-hjsdfj-dhg_p3872"))[0];
+            res = network.Compute(new StringMLData("http://www.dummydomain2.com/our-range/12v-li-pol-cordless"))[0];
+            var res5 = network.Compute(new StringMLData("http://www.dummydomain2.com/our-services/in-home/hot-water-installation"))[0];
+            
 
+        }
+
+        private static bool IsProductUrl(string url)
+        {
+            return !url.Contains("ReturnURL=") && Regex.IsMatch(url, @".*_p\d+");
         }
 
         private static string DoubleArrayToString(IMLData mlData)
@@ -280,14 +290,16 @@ namespace Encog.Examples.XOR
             var count = mlData.Count;
             var doubles = new double[count];
             mlData.CopyTo(doubles, 0, count);
-            var input = new string(doubles.Select(d => (char) d).TakeWhile(c => c > 0).ToArray());
+            var input = new string(doubles.TakeWhile(c => c > 0).Select(d => (char)d).ToArray());
             return input;
         }
 
         private static void StringToDoubleArray(string url, double[] array)
         {
-            var stringAsDoubleArray = url.Select(c => (double) c).ToArray();
-            stringAsDoubleArray.CopyTo(array, 0);
+            var stringMlData = new StringMLData(url);
+            stringMlData.CopyTo(array, 0, stringMlData.Count);
+            //var stringAsDoubleArray = url.Select(c => c).ToArray();
+            //stringAsDoubleArray.CopyTo(array, 0);
         }
 
         #endregion
@@ -297,14 +309,35 @@ namespace Encog.Examples.XOR
     {
         public StringMLData(string input)
         {
-            Input = input;
+            
+            Input = TransformInput(input);
+        }
+
+        private static string TransformInput(string input)
+        {
+            //return input;
+            StringBuilder result = new StringBuilder();
+            var uri = (new Uri(input)).PathAndQuery.Split('/');
+            for (int i = 1; i < uri.Length; i++)
+            {
+                var s = uri[i];
+                //if (i > 2)
+                //{
+                    s = s.PadRight(100);
+                //}
+                result.Append(s);
+                
+            }
+            return result.ToString();
         }
 
         public string Input { get; private set; }
 
         public object Clone()
         {
-            return new StringMLData(Input);
+            var stringMlData = new StringMLData(Input);
+            stringMlData.Input = Input;
+            return stringMlData;
         }
 
         public ICentroid<IMLData> CreateCentroid()

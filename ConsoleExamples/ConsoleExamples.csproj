@@ -123,6 +123,7 @@
     <Compile Include="Examples\Playground\PlaygroundExample.cs" />
     <Compile Include="Examples\SVM\RegressionSVM.cs" />
     <Compile Include="Examples\XOR\ProductUrlBackPropagation.cs" />
+    <Compile Include="Examples\XOR\ProductUrlBackPropagation2.cs" />
     <Compile Include="Examples\XOR\XOROnline.cs" />
     <Compile Include="Persist\PersistEncog.cs" />
     <Compile Include="Persist\PersistSerial.cs" />
