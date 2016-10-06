@@ -22,6 +22,7 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -30,9 +31,12 @@ using Encog.Bot.Browse.Range;
 using Encog.Engine.Network.Activation;
 using Encog.ML.Data;
 using Encog.ML.Data.Basic;
+using Encog.ML.Factory;
 using Encog.ML.Train;
 using Encog.Neural.Networks;
 using Encog.Neural.Networks.Layers;
+using Encog.Neural.Networks.Training;
+using Encog.Neural.Networks.Training.Lma;
 using Encog.Neural.Networks.Training.Propagation;
 using Encog.Neural.Networks.Training.Propagation.Back;
 using Encog.Neural.Networks.Training.Propagation.Resilient;
@@ -222,47 +226,87 @@ namespace Encog.Examples.XOR
             // create a neural network, without using a factory
             var network = new BasicNetwork();
             network.AddLayer(new BasicLayer(null, true, 512));
-            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));
-            
+            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 16));
+            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 16));
+            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 8));
+            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 8));
+            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 8));
+            //network.AddLayer(new BasicLayer(null, true, 128));
+            //network.AddLayer(new BasicLayer(null, true, 16));
+            //network.AddLayer(new BasicLayer(null, true, 8));
+            //network.AddLayer(new BasicLayer(null, true, 4));
+
             //network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));//Added one more layer to check if it would work better because without it it has few issues
-//            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));
+            //            network.AddLayer(new BasicLayer(new ActivationSigmoid(), true, 512));
             network.AddLayer(new BasicLayer(new ActivationSigmoid(), false, 1));
+            //network.AddLayer(new BasicLayer(null, false, 1));
             network.Structure.FinalizeStructure();
             network.Reset();
 
             var length = URLS.Length;
-
-            var urlsInput = new double[length][];
-            var urlsResult = new double[length][];
+            var lettersToReplace = "abcdefghijklmnopqrstuvwxyz";
+            var urlsInput = new List<double[]>();
+            var urlsResult = new List<double[]>();
+            var rand = new Random(1);
             for (int i=0; i<length;i++)
             {
                 var url = URLS[i];
-                urlsInput[i] = new double[512];
-                StringToDoubleArray(url, urlsInput[i]);
-                var productUrl = IsProductUrl(url);
-                var d = productUrl ? 1.0 : 0;
-                urlsResult[i] = new[] {d};
+                AddVector(urlsInput, url, urlsResult);//NormalVector without generalizing
+                var pq = new Uri(url).PathAndQuery;
+                var posOfId = pq.IndexOf("_p");
+                var lastIndex = posOfId >0 ? posOfId : pq.Length-1;
+                for (int j = 0; j < lastIndex; j++)
+                {
+                    var pos = url.IndexOf(pq)  + j;
+                    var c = pq[j];
+                    if (c !='/' && char.IsLetter(c))
+                    {
+                        var newUrl = url.Substring(0, pos)  + url.Substring(pos + 1, url.Length - (pos + 1));
+                        AddVector(urlsInput, newUrl, urlsResult);
+                        newUrl = url.Substring(0, url.IndexOf(pq) + 1) + url.Substring(pos , url.Length - (pos ));
+                        AddVector(urlsInput, newUrl, urlsResult);
+                        for (int t = 0; t < lettersToReplace.Length; t++)
+                        {
+                            if (0 == rand.Next(20))
+                            {
+                                var ind = pos;
+                                newUrl = url.Substring(0, ind) + lettersToReplace[t] +
+                                             url.Substring(ind + 1, url.Length - (ind + 1));
+                                AddVector(urlsInput, newUrl, urlsResult);
+                            }
+                        }
+                    }
+                }
             }
             // create training data
-            IMLDataSet trainingSet = new BasicMLDataSet(urlsInput, urlsResult);
-
+            IMLDataSet trainingSet = new BasicMLDataSet(urlsInput.ToArray(), urlsResult.ToArray());
+            
             // train the neural network using online (batch=1)
-            Propagation train = new Backpropagation(network, trainingSet, 0.7, 0.3);
-            train.BatchSize = 1;
+            Propagation bp = new Backpropagation(network, trainingSet, 0.7, 0.3);
+
+            var levenbergMarquardtTraining = new LevenbergMarquardtTraining(network, trainingSet);
+            bp.BatchSize = 1;
 
             int epoch = 1;
 
+            var trainFactory = new MLTrainFactory();
+
+            IMLTrain train = bp;//levenbergMarquardtTraining;//OutOfMemoryException
+            train = bp;
+            //train = trainFactory.Create(network, trainingSet, MLTrainFactory.TypeAnneal, "");
+            //train = trainFactory.Create(network, trainingSet, MLTrainFactory.TypeRPROP, "");//RBF
+            var sw = Stopwatch.StartNew();
             do
             {
                 train.Iteration();
                 Console.WriteLine(@"Epoch #" + epoch + @" Error:" + train.Error);
                 epoch++;
-            } while (train.Error > 0.0001);
-
+            } while (double.IsNaN(train.Error) || train.Error > 0.00005);
+            sw.Stop();
 
 
             // test the neural network
-            Console.WriteLine(@"Neural Network Results:");
+            Console.WriteLine($"Neural Network Results:{sw.Elapsed}");
             foreach (IMLDataPair pair in trainingSet)
             {
                 IMLData output = network.Compute(pair.Input);
@@ -271,18 +315,30 @@ namespace Encog.Examples.XOR
                                   + @", actual=" + output[0] + @",ideal=" + pair.Ideal[0]);
             }
 
-            var res = network.Compute(new StringMLData("http://www.dummydomain2.com/login?ReturnURL=%2Faeg-18v-li-ion-cordless-hammer-drill-skin-only_p6210356"))[0];
-            res = network.Compute(new StringMLData("http://www.dummydomain2.com/12v-li-pol-cordless-drill-skin-only_p6210356"))[0];
-            res = network.Compute(new StringMLData("http://www.dummydomain2.com/bla-bla-18v-hjsdfj-dhg_p3872"))[0];
+            var res = network.Compute(new StringMLData("http://www.dummydomain2.com/login?ReturnURL=%2Faeg-18v-li-ion-cordless-hammer-drill-skin-only_p43257257"))[0];
+            res = network.Compute(new StringMLData("http://www.dummydomain2.com/12v-li-pol-cordless-drill-skin-only_p43257257"))[0];
+            res = network.Compute(new StringMLData("http://www.dummydomain2.com/bla-bla-18v-hjsdfj-dhg_p43257257"))[0];
             res = network.Compute(new StringMLData("http://www.dummydomain2.com/our-range/12v-li-pol-cordless"))[0];
             var res5 = network.Compute(new StringMLData("http://www.dummydomain2.com/our-services/in-home/hot-water-installation"))[0];
+            res5 = network.Compute(new StringMLData("https://www.bunnings.com.au/pope-universal-tap-adaptor_p3130065"))[0];
             
 
         }
 
+        private static void AddVector(List<double[]> urlsInput, string url, List<double[]> urlsResult)
+        {
+            var vector = new double[512];
+            urlsInput.Add(vector);
+            StringToDoubleArray(url, vector);
+            var productUrl = IsProductUrl(url);
+            var d = productUrl ? 1.0 : 0;
+            urlsResult.Add(new[] {d});
+        }
+
         private static bool IsProductUrl(string url)
         {
-            return !url.Contains("ReturnURL=") && Regex.IsMatch(url, @".*_p\d+");
+            var isProductUrl = !url.Contains("ReturnURL=") && Regex.IsMatch(url, @".*_p\d+");
+            return isProductUrl;
         }
 
         private static string DoubleArrayToString(IMLData mlData)
@@ -297,7 +353,8 @@ namespace Encog.Examples.XOR
         private static void StringToDoubleArray(string url, double[] array)
         {
             var stringMlData = new StringMLData(url);
-            stringMlData.CopyTo(array, 0, stringMlData.Count);
+            array[0] = url.Count(c => c == '/');//Added number of backslashes to help network look into that.
+            stringMlData.CopyTo(array, 1, stringMlData.Count);
             //var stringAsDoubleArray = url.Select(c => c).ToArray();
             //stringAsDoubleArray.CopyTo(array, 0);
         }
@@ -323,7 +380,10 @@ namespace Encog.Examples.XOR
                 var s = uri[i];
                 //if (i > 2)
                 //{
-                    s = s.PadRight(100);
+                var totalWidth = 96;
+                if (s.Length>totalWidth)
+                    throw new Exception();
+                    s = s.PadRight(totalWidth);
                 //}
                 result.Append(s);
                 
@@ -355,7 +415,7 @@ namespace Encog.Examples.XOR
         {
             for (int i = 0; i < count && i < Input.Length; i++)
             {
-                target[targetIndex + i] = Input[i];
+                target[targetIndex + i] = Input[i] == ' ' ? 0 : Input[i];
             }
         }
     }
